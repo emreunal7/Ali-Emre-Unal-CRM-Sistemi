@@ -1,11 +1,11 @@
-# --- İstenen Sınıflar ---
+# --- İstenen Sınıflar (Musteri, Satis, DestekTalebi aynı kalacak) ---
+
 class Musteri:
     def __init__(self, musteri_id, ad, telefon):
         self.musteri_id = musteri_id
         self.ad = ad
         self.telefon = telefon
 
-    # İstenen METOT
     def musteri_ekle(self, musteri_sozlugu):
         musteri_sozlugu[self.musteri_id] = self
         return True, f"Müşteri '{self.ad}' sisteme eklendi."
@@ -15,14 +15,15 @@ class Satis:
         self.satis_id = satis_id
         self.urun = urun
         self.fiyat = fiyat
-        self.musteri = musteri # Hangi müşteriye satıldığını bilmek için ekledik
+        self.musteri = musteri 
 
 class DestekTalebi:
     def __init__(self, talep_id, aciklama, musteri):
         self.talep_id = talep_id
         self.aciklama = aciklama
-        self.musteri = musteri # Hangi müşterinin talebi olduğunu bilmek için ekledik
+        self.musteri = musteri
         self.durum = "Açık"
+
 
 # --- Sistemi Yönetecek Ana Sınıf ---
 class CRMYoneticisi:
@@ -31,19 +32,35 @@ class CRMYoneticisi:
         self.satislar = []
         self.destek_talepleri = []
 
+        # ---------------------------------------------------------
+        # SİSTEME ÖNCEDEN KAYITLI (VARSAYILAN) MÜŞTERİLER EKLENİYOR
+        # ---------------------------------------------------------
+        self.yeni_musteri_kaydi(1, "Ahmet Yılmaz", "0532 111 22 33")
+        self.yeni_musteri_kaydi(2, "Ayşe Demir", "0555 444 55 66")
+        self.yeni_musteri_kaydi(3, "Mehmet Kaya", "0505 777 88 99")
+
+        self.destek_talebi_olustur(1001, 2, "Sisteme giriş yapamıyorum.")
+        self.yeni_satis_yap(101, 1, "Premium Paket", 1500.0)
+        self.yeni_satis_yap(102, 2, "Full Paket", 1000.0)
+        self.yeni_satis_yap(103, 3, "VIP Paket", 1250.0)
+
+        
+        # İsterseniz varsayılan satış veya destek talebi de ekleyebilirsiniz:
+        # self.yeni_satis_yap(101, 1, "Premium Paket", 1500.0)
+        # self.destek_talebi_olustur(1001, 2, "Sisteme giriş yapamıyorum.")
+        # ---------------------------------------------------------
+
     def yeni_musteri_kaydi(self, m_id, ad, telefon):
         if m_id in self.musteriler:
             return False, "Bu ID'ye sahip bir müşteri zaten var!"
         
         yeni_musteri = Musteri(m_id, ad, telefon)
-        # Sınıf içindeki metodu çağırarak listeye ekliyoruz
         return yeni_musteri.musteri_ekle(self.musteriler)
 
     def yeni_satis_yap(self, satis_id, m_id, urun, fiyat):
         if m_id not in self.musteriler:
             return False, "Hata: Müşteri bulunamadı!"
         
-        # Satış ID kontrolü (Aynı ID'den iki satış olmasın)
         for s in self.satislar:
             if s.satis_id == satis_id:
                 return False, "Hata: Bu Satış ID zaten kullanılmış!"
