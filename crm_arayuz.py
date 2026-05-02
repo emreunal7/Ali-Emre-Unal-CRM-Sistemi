@@ -1,4 +1,8 @@
 import sys
+
+from PyQt6.QtCore import Qt, QRegularExpression
+from PyQt6.QtGui import QColor, QIntValidator, QRegularExpressionValidator
+
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QTableWidget, QTableWidgetItem, QFrame,
@@ -132,7 +136,6 @@ class DashboardPage(QWidget):
             self.t_des.setItem(r, 2, durum_hucre)
             
             self.t_des.setItem(r, 3, QTableWidgetItem(t.aciklama))
-
 class IslemPage(QWidget):
     def __init__(self, sistem, dashboard):
         super().__init__()
@@ -146,9 +149,18 @@ class IslemPage(QWidget):
         # 1. Müşteri Ekleme Formu
         kart1 = QFrame(); kart1.setStyleSheet(card_ss()); shadow(kart1)
         k1_lay = QHBoxLayout(kart1)
-        self.i_m_id = QLineEdit(); self.i_m_id.setPlaceholderText("Müşteri ID (Boş giriniz)"); self.i_m_id.setStyleSheet(input_ss())
+        
+        self.i_m_id = QLineEdit(); self.i_m_id.setPlaceholderText("Müşteri ID"); self.i_m_id.setStyleSheet(input_ss())
+        self.i_m_id.setValidator(QIntValidator(1, 999999)) # Sadece sayı
+        
         self.i_m_ad = QLineEdit(); self.i_m_ad.setPlaceholderText("Ad Soyad"); self.i_m_ad.setStyleSheet(input_ss())
+        # Sadece harf ve boşluk
+        self.i_m_ad.setValidator(QRegularExpressionValidator(QRegularExpression("^[a-zA-ZğüşıöçĞÜŞİÖÇ ]+$")))
+        
         self.i_m_tel = QLineEdit(); self.i_m_tel.setPlaceholderText("Telefon"); self.i_m_tel.setStyleSheet(input_ss())
+        # Rakam, boşluk, +, -, parantez kabul eden telefon filtresi
+        self.i_m_tel.setValidator(QRegularExpressionValidator(QRegularExpression(r"^[0-9+ ()\-]+$")))
+        
         btn_m_ekle = QPushButton("Müşteri Kaydet"); btn_m_ekle.setStyleSheet(btn_primary_ss())
         btn_m_ekle.clicked.connect(self._musteri_ekle)
         k1_lay.addWidget(self.i_m_id); k1_lay.addWidget(self.i_m_ad); k1_lay.addWidget(self.i_m_tel); k1_lay.addWidget(btn_m_ekle)
@@ -157,9 +169,15 @@ class IslemPage(QWidget):
         # 2. Satış Yapma Formu
         kart2 = QFrame(); kart2.setStyleSheet(card_ss()); shadow(kart2)
         k2_lay = QHBoxLayout(kart2)
+        
         self.i_s_id = QLineEdit(); self.i_s_id.setPlaceholderText("Satış ID"); self.i_s_id.setStyleSheet(input_ss())
+        self.i_s_id.setValidator(QIntValidator(1, 999999)) # Sadece sayı
+        
         self.i_s_mid = QLineEdit(); self.i_s_mid.setPlaceholderText("Müşteri ID"); self.i_s_mid.setStyleSheet(input_ss())
+        self.i_s_mid.setValidator(QIntValidator(1, 999999)) # Sadece sayı
+        
         self.i_s_urun = QLineEdit(); self.i_s_urun.setPlaceholderText("Ürün Adı"); self.i_s_urun.setStyleSheet(input_ss())
+        # Ürün adında rakam da olabileceği için serbest bırakıyoruz (Örn: Paket 1)
         
         self.i_s_fiyat = QDoubleSpinBox()
         self.i_s_fiyat.setRange(0, 999999); self.i_s_fiyat.setSuffix(" ₺")
@@ -175,8 +193,13 @@ class IslemPage(QWidget):
         # 3. Destek Talebi Formu
         kart3 = QFrame(); kart3.setStyleSheet(card_ss()); shadow(kart3)
         k3_lay = QHBoxLayout(kart3)
+        
         self.i_t_id = QLineEdit(); self.i_t_id.setPlaceholderText("Talep ID"); self.i_t_id.setStyleSheet(input_ss())
+        self.i_t_id.setValidator(QIntValidator(1, 999999)) # Sadece sayı
+        
         self.i_t_mid = QLineEdit(); self.i_t_mid.setPlaceholderText("Müşteri ID"); self.i_t_mid.setStyleSheet(input_ss())
+        self.i_t_mid.setValidator(QIntValidator(1, 999999)) # Sadece sayı
+        
         self.i_t_aciklama = QLineEdit(); self.i_t_aciklama.setPlaceholderText("Sorun Açıklaması"); self.i_t_aciklama.setStyleSheet(input_ss())
         
         btn_t_olustur = QPushButton("Talep Aç")
@@ -196,7 +219,7 @@ class IslemPage(QWidget):
     def _musteri_ekle(self):
         try:
             m_id = int(self.i_m_id.text())
-            if not self.i_m_ad.text() or not self.i_m_tel.text():
+            if not self.i_m_ad.text().strip() or not self.i_m_tel.text().strip():
                 self._msg("hata", "Hata", "Lütfen tüm alanları doldurun.")
                 return
             basari, msg = self.sistem.yeni_musteri_kaydi(m_id, self.i_m_ad.text(), self.i_m_tel.text())
@@ -211,7 +234,7 @@ class IslemPage(QWidget):
         try:
             s_id = int(self.i_s_id.text())
             m_id = int(self.i_s_mid.text())
-            if not self.i_s_urun.text():
+            if not self.i_s_urun.text().strip():
                 self._msg("hata", "Hata", "Lütfen ürün adını girin.")
                 return
             basari, msg = self.sistem.yeni_satis_yap(s_id, m_id, self.i_s_urun.text(), self.i_s_fiyat.value())
@@ -226,7 +249,7 @@ class IslemPage(QWidget):
         try:
             t_id = int(self.i_t_id.text())
             m_id = int(self.i_t_mid.text())
-            if not self.i_t_aciklama.text():
+            if not self.i_t_aciklama.text().strip():
                 self._msg("hata", "Hata", "Lütfen açıklama girin.")
                 return
             basari, msg = self.sistem.destek_talebi_olustur(t_id, m_id, self.i_t_aciklama.text())
