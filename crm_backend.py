@@ -70,6 +70,30 @@ class CRMYoneticisi:
         self.satislar.append(yeni_satis)
         return True, f"Başarılı: '{urun}' satışı kaydedildi."
 
+     # --- Güncelleme Metotları ---
+    def musteri_guncelle(self, m_id, yeni_ad, yeni_tel):
+        if m_id not in self.musteriler:
+            return False, "Hata: Müşteri bulunamadı!"
+        
+        self.musteriler[m_id].ad = yeni_ad
+        self.musteriler[m_id].telefon = yeni_tel
+        return True, f"Müşteri (ID: {m_id}) başarıyla güncellendi."
+
+    def satis_guncelle(self, s_id, yeni_urun, yeni_fiyat):
+        for satis in self.satislar:
+            if satis.satis_id == s_id:
+                satis.urun = yeni_urun
+                satis.fiyat = yeni_fiyat
+                return True, f"Satış (ID: {s_id}) başarıyla güncellendi."
+        return False, "Hata: Satış kaydı bulunamadı!"
+
+    def destek_durum_guncelle(self, t_id, yeni_durum):
+        for talep in self.destek_talepleri:
+            if talep.talep_id == t_id:
+                talep.durum = yeni_durum
+                return True, f"Talep (ID: {t_id}) durumu '{yeni_durum}' olarak güncellendi."
+        return False, "Hata: Destek talebi bulunamadı!"   
+
     def destek_talebi_olustur(self, talep_id, m_id, aciklama):
         if m_id not in self.musteriler:
             return False, "Hata: Müşteri bulunamadı!"
