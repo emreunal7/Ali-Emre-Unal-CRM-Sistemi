@@ -260,6 +260,85 @@ class IslemPage(QWidget):
             else: self._msg("hata", "Hata", msg)
         except ValueError: self._msg("hata", "Hata", "ID alanlarına sadece sayı giriniz.")
 
+
+class GuncellemePage(QWidget):
+    def __init__(self, sistem, dashboard):
+        super().__init__()
+        self.sistem = sistem; self.dashboard = dashboard; self._build()
+
+    def _build(self):
+        lay = QVBoxLayout(self); lay.setContentsMargins(35, 30, 35, 30)
+        lbl = QLabel("✏️ Veri Güncelleme"); lbl.setStyleSheet(f"color:{C['text']}; font-size:24px; font-weight:900;")
+        lay.addWidget(lbl); lay.addSpacing(20)
+
+        # 1. Müşteri Güncelleme
+        kart1 = QFrame(); kart1.setStyleSheet(card_ss()); shadow(kart1)
+        k1_lay = QHBoxLayout(kart1)
+        
+        self.u_m_id = QLineEdit(); self.u_m_id.setPlaceholderText("Güncellenecek Müşteri ID"); self.u_m_id.setStyleSheet(input_ss())
+        self.u_m_id.setValidator(QIntValidator(1, 999999)) # Sadece sayı
+        
+        self.u_m_ad = QLineEdit(); self.u_m_ad.setPlaceholderText("Yeni Ad Soyad"); self.u_m_ad.setStyleSheet(input_ss())
+        # Sadece harf ve boşluk
+        self.u_m_ad.setValidator(QRegularExpressionValidator(QRegularExpression("^[a-zA-ZğüşıöçĞÜŞİÖÇ ]+$")))
+        
+        self.u_m_tel = QLineEdit(); self.u_m_tel.setPlaceholderText("Yeni Telefon"); self.u_m_tel.setStyleSheet(input_ss())
+        # Rakam, boşluk, +, -, parantez kabul eden telefon filtresi
+        self.u_m_tel.setValidator(QRegularExpressionValidator(QRegularExpression(r"^[0-9+ ()\-]+$")))
+        
+        btn_u_m = QPushButton("Müşteriyi Güncelle"); btn_u_m.setStyleSheet(btn_primary_ss())
+        btn_u_m.clicked.connect(self._musteri_guncelle)
+        k1_lay.addWidget(self.u_m_id); k1_lay.addWidget(self.u_m_ad); k1_lay.addWidget(self.u_m_tel); k1_lay.addWidget(btn_u_m)
+        lay.addWidget(kart1); lay.addSpacing(15)
+
+        # 2. Destek Durumu Güncelleme (Basitçe Durumu Değiştirme)
+        kart2 = QFrame(); kart2.setStyleSheet(card_ss()); shadow(kart2)
+        k2_lay = QHBoxLayout(kart2)
+        
+        self.u_t_id = QLineEdit(); self.u_t_id.setPlaceholderText("Talep ID"); self.u_t_id.setStyleSheet(input_ss())
+        self.u_t_id.setValidator(QIntValidator(1, 999999)) # Sadece sayı
+        
+        self.u_t_durum = QLineEdit(); self.u_t_durum.setPlaceholderText("Yeni Durum (Örn: Çözüldü)"); self.u_t_durum.setStyleSheet(input_ss())
+        
+        btn_u_t = QPushButton("Durumu Güncelle"); btn_u_t.setStyleSheet(btn_primary_ss().replace(C['accent'], C['warning']))
+        btn_u_t.clicked.connect(self._talep_guncelle)
+        k2_lay.addWidget(self.u_t_id); k2_lay.addWidget(self.u_t_durum); k2_lay.addWidget(btn_u_t)
+        lay.addWidget(kart2); lay.addStretch()
+
+    def _musteri_guncelle(self):
+        try:
+            m_id = int(self.u_m_id.text())
+            
+            # Boş veri gönderilmesini engelleyen kontrol
+            if not self.u_m_ad.text().strip() or not self.u_m_tel.text().strip():
+                QMessageBox.warning(self, "Hata", "Lütfen yeni ad soyad ve telefon bilgilerini boş bırakmayın.")
+                return
+                
+            basari, msg = self.sistem.musteri_guncelle(m_id, self.u_m_ad.text(), self.u_m_tel.text())
+            QMessageBox.information(self, "Bilgi", msg)
+            if basari: 
+                self.u_m_id.clear(); self.u_m_ad.clear(); self.u_m_tel.clear()
+                self.dashboard.refresh()
+        except: QMessageBox.warning(self, "Hata", "Lütfen geçerli bir Müşteri ID girin.")
+
+    def _talep_guncelle(self):
+        try:
+            t_id = int(self.u_t_id.text())
+            
+            if not self.u_t_durum.text().strip():
+                QMessageBox.warning(self, "Hata", "Lütfen yeni durumu boş bırakmayın.")
+                return
+                
+            basari, msg = self.sistem.destek_durum_guncelle(t_id, self.u_t_durum.text())
+            QMessageBox.information(self, "Bilgi", msg)
+            if basari: 
+                self.u_t_id.clear(); self.u_t_durum.clear()
+                self.dashboard.refresh()
+        except: QMessageBox.warning(self, "Hata", "Lütfen geçerli bir Talep ID girin.")
+
+
+
+# ── ANA PENCERE ──────────────────────────────────────────
 # ── ANA PENCERE ──────────────────────────────────────────
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -283,7 +362,7 @@ class MainWindow(QMainWindow):
         sb.addWidget(t1); sb.addSpacing(30)
 
         self.nav = []
-        sayfalar = [("📊", "CRM Paneli"), ("✍️", "Veri Girişi")]
+        sayfalar = [("📊", "CRM Paneli"), ("✍️", "Veri Girişi"), ("✏️", "Veri Düzenle")]
         for ikon, metin in sayfalar:
             btn = SideBtn(ikon, metin); btn.clicked.connect(lambda _, m=metin: self._goto(m))
             sb.addWidget(btn); self.nav.append(btn)
@@ -294,13 +373,14 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.p_dashboard = DashboardPage(self.sistem)
         self.p_islem = IslemPage(self.sistem, self.p_dashboard)
+        self.p_guncelle = GuncellemePage(self.sistem, self.p_dashboard)
         
-        for p in [self.p_dashboard, self.p_islem]: self.stack.addWidget(p)
+        for p in [self.p_dashboard, self.p_islem, self.p_guncelle]: self.stack.addWidget(p)
         il.addWidget(self.stack); ana.addWidget(icerik)
         self._goto("CRM Paneli")
 
     def _goto(self, sayfa):
-        idx = {"CRM Paneli": 0, "Veri Girişi": 1}[sayfa]
+        idx = {"CRM Paneli": 0, "Veri Girişi": 1, "Veri Düzenle": 2}[sayfa]
         self.stack.setCurrentIndex(idx)
         for i, b in enumerate(self.nav): b.setChecked(i == idx)
         if idx == 0: self.p_dashboard.refresh()
